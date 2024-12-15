@@ -39,6 +39,18 @@ has_build=$(node -e "
     }
 ")
 
+has_start=$(node -e "
+    const fs = require('fs')
+    const path = './package.json'
+    if(fs.existsSync(path)) {
+        const pkg = JSON.parse(fs.readFileSync(path), 'utf-8')
+        console.log(pkg.scripts && pkg.scripts.start ? 'yes' : 'no')
+    } else {
+        console.log('Error finding package.json')
+        process.exit(1)
+    }
+")
+
 if [ "$has_build" == "no" ]; then
     echo "Adding 'build' script to package.json"
     node -e '
@@ -60,5 +72,25 @@ else
 fi
 
 
-exec node app.js
+if [ "$has_start" == "no" ]; then
+    echo "Adding 'start' script to package.json"
+    node -e '
+        const fs = require("fs");
+        const path = "./package.json";
+        if (fs.existsSync(path)) {
+            const pkg = JSON.parse(fs.readFileSync(path, "utf-8"));
+            pkg.scripts = pkg.scripts || {};
+            pkg.scripts.start = `node ${pkg.main || "index.js"}`;
+            fs.writeFileSync(path, JSON.stringify(pkg, null, 2));
+            console.log("Start script added successfully");
+        } else {
+            console.error("Error: package.json not found");
+            process.exit(1);
+        }
+    '
+else
+    echo "Start script already exists"
+fi
 
+
+exec node app.js
